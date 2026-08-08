@@ -1,0 +1,2130 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>خريطة الرغبات والمسافات</title>
+
+    <!-- Google Font: Cairo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js">
+    </script>
+
+    <style>
+        /* ===== ROOT ===== */
+        :root {
+            --bg: #f0f4f8;
+            --surface: rgba(255, 255, 255, 0.92);
+            --surface2: rgba(240, 245, 250, 0.95);
+            --surface3: #e8edf2;
+            --border: rgba(200, 210, 220, 0.7);
+            --border2: #c0cdda;
+            --text: #1a2633;
+            --text2: #3a4a5a;
+            --text3: #6a7a8a;
+            --accent: #1a6b9e;
+            --accent2: #2488c7;
+            --green: #2ecc71;
+            --amber: #f4a300;
+            --red: #e63946;
+            --teal: #2a9d8f;
+            --purple: #6c5ce7;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --font: 'Cairo', 'Segoe UI', Tahoma, Geneva, Arial, sans-serif;
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            --glass: rgba(255, 255, 255, 0.88);
+            --backdrop: blur(12px);
+            --teal-light: #34b8a8;
+            --surface-glass: rgba(240, 245, 250, 0.5);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 6px;
+        }
+
+        /* ===== MAP ===== */
+        #mapContainer {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ===== FLOATING LEGEND ===== */
+        #floatingLegend {
+            position: fixed;
+            top: 14px;
+            inset-inline-start: 14px;
+            z-index: 1100;
+            background: var(--glass);
+            backdrop-filter: var(--backdrop);
+            -webkit-backdrop-filter: var(--backdrop);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 10px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            box-shadow: var(--shadow);
+            min-width: 100px;
+        }
+        #floatingLegend .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text2);
+            font-weight: 600;
+        }
+        #floatingLegend .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            border: 2px solid #ffffff !important;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.15);
+        }
+        #floatingLegend .legend-dot.user {
+            background: var(--purple);
+        }
+        #floatingLegend .legend-dot.dest {
+            background: var(--amber);
+        }
+        #floatingLegend .legend-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 2px 0;
+        }
+
+        /* ===== SIDEBAR (LEFT) ===== */
+        #sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 440px;
+            max-width: 92vw;
+            background: var(--glass);
+            backdrop-filter: var(--backdrop);
+            -webkit-backdrop-filter: var(--backdrop);
+            border-right: 1px solid var(--border);
+            transform: translateX(-110%);
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1200;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            will-change: transform;
+        }
+        #sidebar.open {
+            transform: translateX(0);
+        }
+
+        #sidebar .sidebar-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+            background: var(--surface2);
+            min-height: 54px;
+        }
+        #sidebar .sidebar-header .title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #sidebar .sidebar-header .title-wrap svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--text2);
+        }
+        #sidebar .sidebar-header .count-badge {
+            background: var(--accent);
+            border-radius: 20px;
+            padding: 0 12px;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 22px;
+            color: #fff;
+        }
+        #sidebar .sidebar-header .close-btn {
+            background: rgba(0, 0, 0, 0.06);
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 50%;
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        #sidebar .sidebar-header .close-btn:hover {
+            background: rgba(0, 0, 0, 0.12);
+        }
+        #sidebar .sidebar-header .close-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--text2);
+        }
+
+        #sidebar #listWrap {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        #sidebar #list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 10px 16px;
+            -webkit-overflow-scrolling: touch;
+        }
+        #sidebar #list .item {
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 6px;
+            background: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            border: 1px solid rgba(200, 210, 220, 0.4);
+            transition: background 0.2s, border-color 0.2s, transform 0.15s;
+            font-size: 12px;
+            position: relative;
+        }
+        #sidebar #list .item:hover {
+            background: rgba(255, 255, 255, 0.85);
+            border-color: var(--accent2);
+        }
+        #sidebar #list .item:active {
+            transform: scale(0.98);
+        }
+        #sidebar #list .item .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        #sidebar #list .item .name-wrap {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        #sidebar #list .item .num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 22px;
+            height: 22px;
+            background: var(--accent);
+            border-radius: 50%;
+            font-size: 10px;
+            font-weight: 700;
+            flex-shrink: 0;
+            color: #fff;
+        }
+        #sidebar #list .item .name {
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text);
+            letter-spacing: 0.2px;
+        }
+        #sidebar #list .item .dist-info {
+            font-size: 11px;
+            color: var(--text3);
+            margin-top: 4px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 14px;
+            font-weight: 500;
+        }
+        #sidebar #list .item .dist-info .dval {
+            font-weight: 700;
+            color: var(--text2);
+        }
+        #sidebar #list .item .tags {
+            margin-top: 5px;
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        #sidebar #list .item .tag {
+            font-size: 9px;
+            padding: 2px 10px;
+            border-radius: 12px;
+            background: rgba(200, 210, 220, 0.5);
+            color: var(--text2);
+            letter-spacing: 0.3px;
+            font-weight: 600;
+        }
+        #sidebar #list .item .tag.gov {
+            background: rgba(42, 157, 143, 0.15);
+            color: var(--teal);
+        }
+        #sidebar #list .item .tag.prio {
+            background: rgba(244, 163, 0, 0.2);
+            color: #b87a00;
+        }
+
+        /* ============================================================
+                   FILTER PANEL (RIGHT) — REDESIGNED
+                   ============================================================ */
+        #filterPanel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 420px;
+            max-width: 94vw;
+            background: var(--glass);
+            backdrop-filter: var(--backdrop);
+            -webkit-backdrop-filter: var(--backdrop);
+            border-left: 1px solid var(--border);
+            transform: translateX(110%);
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1210;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            will-change: transform;
+            font-family: var(--font);
+        }
+        #filterPanel.open {
+            transform: translateX(0);
+        }
+
+        /* ---- HEADER ---- */
+        #filterPanel .panel-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text);
+            background: var(--surface2);
+            min-height: 54px;
+        }
+        #filterPanel .panel-header .title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #filterPanel .panel-header .title-wrap svg {
+            width: 22px;
+            height: 22px;
+            fill: var(--text2);
+        }
+        #filterPanel .panel-header .close-btn {
+            background: rgba(0, 0, 0, 0.06);
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        #filterPanel .panel-header .close-btn:hover {
+            background: rgba(0, 0, 0, 0.12);
+        }
+        #filterPanel .panel-header .close-btn svg {
+            width: 22px;
+            height: 22px;
+            fill: var(--text2);
+        }
+
+        /* ---- BODY ---- */
+        #filterPanel .panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 16px 24px;
+            -webkit-overflow-scrolling: touch;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* ---- SECTION BASE ---- */
+        #filterPanel .panel-body .section {
+            background: var(--surface-glass);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            border: 1px solid rgba(200, 210, 220, 0.3);
+        }
+        #filterPanel .panel-body .section:last-child {
+            margin-bottom: 0;
+        }
+        #filterPanel .panel-body .section-title {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--text3);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        #filterPanel .panel-body .section-title svg {
+            width: 16px;
+            height: 16px;
+            fill: var(--text3);
+            flex-shrink: 0;
+        }
+
+        /* ---- LOCATION SECTION ---- */
+        .loc-status-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text2);
+            padding: 4px 0 8px 0;
+        }
+        .loc-status-row .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            border: 2px solid #ffffff !important;
+            box-shadow: 0 0 6px rgba(0, 0, 0, 0.15);
+        }
+        .loc-status-row .dot.active {
+            background: var(--green);
+            box-shadow: 0 0 12px rgba(46, 204, 113, 0.3);
+        }
+        .loc-status-row .dot.inactive {
+            background: var(--red);
+        }
+        .loc-status-row .dot.pending {
+            background: var(--amber);
+            animation: pulse-dot 0.9s infinite;
+        }
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.4;
+                transform: scale(0.85);
+            }
+        }
+        .loc-status-row .loc-coords {
+            font-size: 10.5px;
+            color: var(--text2) !important;
+            direction: ltr;
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.06);
+            padding: 2px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            flex: 1;
+            min-width: 70px;
+            text-align: center;
+        }
+
+        /* ---- BUTTON ROW ---- */
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 2px;
+        }
+        .btn-row button {
+            flex: 1;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: var(--font);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: background 0.2s, transform 0.1s;
+            min-height: 40px;
+            color: #fff;
+        }
+        .btn-row button:active {
+            transform: scale(0.95);
+        }
+        .btn-row button.success {
+            background: var(--teal);
+        }
+        .btn-row button.success:hover {
+            background: var(--teal-light);
+        }
+        .btn-row button.secondary {
+            background: rgba(42, 74, 96, 0.7);
+        }
+        .btn-row button.secondary:hover {
+            background: rgba(42, 74, 96, 0.85);
+        }
+        .btn-row button svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+
+        /* ---- PLACE SEARCH (manual location) ---- */
+        .place-search-wrap {
+            margin-top: 10px;
+            position: relative;
+        }
+        .place-search-wrap .search-icon {
+            position: absolute;
+            inset-inline-start: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            fill: var(--text3);
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        .place-search-wrap input {
+            width: 100%;
+            padding: 10px 40px 10px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border2);
+            background: rgba(255, 255, 255, 0.8);
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 500;
+            font-family: var(--font);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .place-search-wrap input:focus {
+            border-color: var(--accent2);
+            box-shadow: 0 0 0 2px rgba(36, 136, 199, 0.15);
+        }
+        .place-search-wrap input::placeholder {
+            color: rgba(58, 74, 90, 0.4);
+            font-weight: 400;
+        }
+        .place-search-results {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            max-height: 180px;
+            overflow-y: auto;
+            z-index: 50;
+            display: none;
+            box-shadow: var(--shadow);
+        }
+        .place-search-results .result-item {
+            padding: 8px 14px;
+            font-size: 12px;
+            color: var(--text2);
+            cursor: pointer;
+            border-bottom: 1px solid rgba(200, 210, 220, 0.3);
+            transition: background 0.15s;
+            font-weight: 500;
+        }
+        .place-search-results .result-item:last-child {
+            border-bottom: none;
+        }
+        .place-search-results .result-item:hover {
+            background: rgba(0, 0, 0, 0.04);
+        }
+        .place-search-results .result-item .sub {
+            font-size: 10px;
+            color: var(--text3);
+            display: block;
+            font-weight: 400;
+        }
+
+        /* ---- FILTERS SECTION (vertical stack) ---- */
+        .filter-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .filter-stack .filter-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .filter-stack .filter-item label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text2);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .filter-stack .filter-item input[type="checkbox"] {
+            accent-color: var(--accent);
+            width: 17px;
+            height: 17px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .filter-stack .filter-item input[type="text"],
+        .filter-stack .filter-item input[type="number"],
+        .filter-stack .filter-item select {
+            background: rgba(255, 255, 255, 0.8);
+            color: var(--text);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            font-family: var(--font);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            width: 100%;
+            min-width: 0;
+        }
+        .filter-stack .filter-item input:focus,
+        .filter-stack .filter-item select:focus {
+            border-color: var(--accent2);
+            box-shadow: 0 0 0 2px rgba(36, 136, 199, 0.15);
+        }
+        .filter-stack .filter-item select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236a7a8a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: left 12px center;
+            background-size: 14px;
+            padding-inline-end: 36px;
+        }
+
+        /* ---- full-width items ---- */
+        .filter-stack .full-width {
+            width: 100%;
+        }
+
+        /* ---- search bar ---- */
+        .search-bar-wrap {
+            position: relative;
+            width: 100%;
+        }
+        .search-bar-wrap .search-icon {
+            position: absolute;
+            inset-inline-start: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            fill: var(--text3);
+            pointer-events: none;
+            opacity: 0.5;
+        }
+        .search-bar-wrap input {
+            width: 100%;
+            padding: 10px 40px 10px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border2);
+            background: rgba(255, 255, 255, 0.8);
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 500;
+            font-family: var(--font);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .search-bar-wrap input:focus {
+            border-color: var(--accent2);
+            box-shadow: 0 0 0 2px rgba(36, 136, 199, 0.15);
+        }
+        .search-bar-wrap input::placeholder {
+            color: rgba(58, 74, 90, 0.4);
+            font-weight: 400;
+        }
+
+        /* ---- distance row (compact) ---- */
+        .dist-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+        .dist-row .dist-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text2);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .dist-row .dist-input-wrap {
+            position: relative;
+            flex: 1;
+            min-width: 80px;
+        }
+        .dist-row .dist-input-wrap input {
+            width: 100%;
+            padding: 8px 40px 8px 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border2);
+            background: rgba(255, 255, 255, 0.8);
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 500;
+            font-family: var(--font);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .dist-row .dist-input-wrap input:focus {
+            border-color: var(--accent2);
+            box-shadow: 0 0 0 2px rgba(36, 136, 199, 0.15);
+        }
+        .dist-row .dist-input-wrap .suffix {
+            position: absolute;
+            inset-inline-end: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text3);
+            pointer-events: none;
+        }
+
+        /* ---- EXPORT SECTION ---- */
+        .export-btn {
+            width: 100%;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 800;
+            font-family: var(--font);
+            cursor: pointer;
+            background: var(--teal);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.2s, transform 0.1s;
+            min-height: 48px;
+        }
+        .export-btn:hover {
+            background: var(--teal-light);
+        }
+        .export-btn:active {
+            transform: scale(0.96);
+        }
+        .export-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+
+        /* ===== OVERLAY ===== */
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 1190;
+            display: none;
+            transition: opacity 0.35s ease;
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+        }
+        #overlay.show {
+            display: block;
+        }
+
+        /* ===== BOTTOM BUTTONS ===== */
+        .bottom-btn {
+            position: fixed;
+            bottom: 24px;
+            z-index: 1300;
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            border: none;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+            background: var(--glass);
+            backdrop-filter: var(--backdrop);
+            -webkit-backdrop-filter: var(--backdrop);
+            border: 1.5px solid var(--border);
+            color: var(--text);
+        }
+        .bottom-btn:hover {
+            background: var(--surface2);
+            box-shadow: 0 6px 32px rgba(0, 0, 0, 0.2);
+        }
+        .bottom-btn:active {
+            transform: scale(0.90);
+        }
+        .bottom-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--text2);
+        }
+        .bottom-btn .badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--red);
+            color: #fff;
+            border-radius: 50%;
+            min-width: 22px;
+            height: 22px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            padding: 0 6px;
+            border: 2px solid var(--bg);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        .bottom-btn.left {
+            left: 20px;
+        }
+        .bottom-btn.right {
+            right: 20px;
+        }
+
+        /* ===== TOAST ===== */
+        #toast {
+            position: fixed;
+            bottom: 92px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--glass);
+            backdrop-filter: var(--backdrop);
+            -webkit-backdrop-filter: var(--backdrop);
+            color: var(--text);
+            padding: 12px 26px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            font-size: 13px;
+            font-weight: 600;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.35s, transform 0.35s;
+            pointer-events: none;
+            box-shadow: var(--shadow);
+            text-align: center;
+            max-width: 90vw;
+            font-family: var(--font);
+        }
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ===== CREDIT — same row, centered between the two bottom buttons ===== */
+        #creditFooter {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            height: 54px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            color: rgba(42, 74, 90, 0.8);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 0 22px;
+            border-radius: 30px;
+            z-index: 999;
+            border: 1px solid rgba(200, 210, 220, 0.4);
+            pointer-events: none;
+            white-space: nowrap;
+            font-family: var(--font);
+            box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+        }
+        #creditFooter .name-highlight {
+            color: var(--teal) !important;
+            font-weight: 800;
+            pointer-events: auto;
+            transition: color 0.2s;
+            text-decoration: none;
+        }
+        #creditFooter .name-highlight:hover {
+            color: var(--teal-light) !important;
+            text-decoration: underline;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            #sidebar {
+                width: 94vw;
+                max-width: 94vw;
+            }
+            #filterPanel {
+                width: 94vw;
+                max-width: 94vw;
+            }
+            #floatingLegend {
+                top: 12px;
+                inset-inline-start: 12px;
+                padding: 8px 12px;
+                min-width: 72px;
+            }
+            #floatingLegend .legend-item {
+                font-size: 10px;
+                gap: 6px;
+            }
+            #floatingLegend .legend-dot {
+                width: 11px;
+                height: 11px;
+            }
+            .bottom-btn {
+                width: 48px;
+                height: 48px;
+                bottom: 18px;
+            }
+            .bottom-btn svg {
+                width: 20px;
+                height: 20px;
+            }
+            .bottom-btn.left {
+                left: 14px;
+            }
+            .bottom-btn.right {
+                right: 14px;
+            }
+            #creditFooter {
+                font-size: 11px;
+                padding: 0 16px;
+                bottom: 18px;
+                height: 48px;
+            }
+            #filterPanel .panel-body {
+                padding: 12px 12px 18px;
+                gap: 12px;
+            }
+            #filterPanel .panel-body .section {
+                padding: 12px 14px;
+            }
+            #filterPanel .panel-header {
+                padding: 12px 14px;
+                min-height: 48px;
+                font-size: 14px;
+            }
+            #filterPanel .panel-header .close-btn {
+                width: 32px;
+                height: 32px;
+            }
+            #filterPanel .panel-header .close-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+            #sidebar .sidebar-header {
+                padding: 10px 14px;
+                min-height: 46px;
+                font-size: 12px;
+            }
+            #sidebar #list .item {
+                padding: 8px 10px;
+            }
+            #sidebar #list .item .name {
+                font-size: 12px;
+            }
+            #toast {
+                bottom: 80px;
+                font-size: 12px;
+                padding: 10px 18px;
+            }
+            .loc-status-row {
+                font-size: 11px;
+                gap: 8px;
+            }
+            .loc-status-row .loc-coords {
+                font-size: 9.5px;
+                padding: 2px 10px;
+                min-width: 60px;
+            }
+            .btn-row button {
+                font-size: 11px;
+                padding: 6px 12px;
+                min-height: 36px;
+            }
+            .filter-stack .filter-item label {
+                font-size: 11px;
+            }
+            .filter-stack .filter-item input,
+            .filter-stack .filter-item select {
+                font-size: 11px;
+                padding: 6px 10px;
+            }
+            .search-bar-wrap input {
+                font-size: 11px;
+                padding: 8px 36px 8px 12px;
+            }
+            .dist-row .dist-label {
+                font-size: 11px;
+            }
+            .dist-row .dist-input-wrap input {
+                font-size: 11px;
+                padding: 6px 36px 6px 10px;
+            }
+            .dist-row .dist-input-wrap .suffix {
+                font-size: 11px;
+            }
+            .export-btn {
+                font-size: 13px;
+                padding: 10px 14px;
+                min-height: 42px;
+            }
+            .place-search-wrap input {
+                font-size: 11px;
+                padding: 8px 36px 8px 12px;
+            }
+            .place-search-results .result-item {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+            .place-search-results .result-item .sub {
+                font-size: 9px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            #floatingLegend {
+                top: 10px;
+                inset-inline-start: 10px;
+                padding: 6px 10px;
+                min-width: 60px;
+            }
+            #floatingLegend .legend-item {
+                font-size: 9px;
+                gap: 4px;
+            }
+            #floatingLegend .legend-dot {
+                width: 9px;
+                height: 9px;
+            }
+            .bottom-btn {
+                width: 42px;
+                height: 42px;
+                bottom: 14px;
+            }
+            .bottom-btn svg {
+                width: 17px;
+                height: 17px;
+            }
+            .bottom-btn.left {
+                left: 10px;
+            }
+            .bottom-btn.right {
+                right: 10px;
+            }
+            #creditFooter {
+                font-size: 9.5px;
+                padding: 0 12px;
+                bottom: 14px;
+                height: 42px;
+            }
+            #filterPanel .panel-body {
+                padding: 10px 10px 14px;
+                gap: 10px;
+            }
+            #filterPanel .panel-body .section {
+                padding: 10px 12px;
+            }
+            #filterPanel .panel-header {
+                padding: 10px 12px;
+                min-height: 44px;
+                font-size: 13px;
+            }
+            #filterPanel .panel-header .close-btn {
+                width: 28px;
+                height: 28px;
+            }
+            #filterPanel .panel-header .close-btn svg {
+                width: 16px;
+                height: 16px;
+            }
+            .loc-status-row {
+                font-size: 10px;
+                gap: 6px;
+            }
+            .loc-status-row .loc-coords {
+                font-size: 8.5px;
+                padding: 1px 8px;
+                min-width: 50px;
+            }
+            .btn-row {
+                gap: 6px;
+            }
+            .btn-row button {
+                font-size: 10px;
+                padding: 5px 10px;
+                min-height: 32px;
+            }
+            .btn-row button svg {
+                width: 14px;
+                height: 14px;
+            }
+            .filter-stack {
+                gap: 8px;
+            }
+            .filter-stack .filter-item label {
+                font-size: 10px;
+            }
+            .filter-stack .filter-item input,
+            .filter-stack .filter-item select {
+                font-size: 10px;
+                padding: 5px 8px;
+            }
+            .search-bar-wrap input {
+                font-size: 10px;
+                padding: 6px 32px 6px 10px;
+            }
+            .search-bar-wrap .search-icon {
+                width: 15px;
+                height: 15px;
+                inset-inline-start: 10px;
+            }
+            .dist-row {
+                gap: 8px;
+            }
+            .dist-row .dist-label {
+                font-size: 10px;
+            }
+            .dist-row .dist-input-wrap input {
+                font-size: 10px;
+                padding: 5px 32px 5px 8px;
+            }
+            .dist-row .dist-input-wrap .suffix {
+                font-size: 10px;
+                inset-inline-end: 8px;
+            }
+            .export-btn {
+                font-size: 12px;
+                padding: 8px 12px;
+                min-height: 38px;
+            }
+            .export-btn svg {
+                width: 16px;
+                height: 16px;
+            }
+            #sidebar #list .item .name {
+                font-size: 10.5px;
+            }
+            #sidebar #list .item .dist-info {
+                font-size: 9.5px;
+            }
+            #sidebar #list .item .tag {
+                font-size: 8px;
+                padding: 1px 8px;
+            }
+            .place-search-wrap input {
+                font-size: 10px;
+                padding: 6px 32px 6px 10px;
+            }
+            .place-search-wrap .search-icon {
+                width: 15px;
+                height: 15px;
+                inset-inline-start: 10px;
+            }
+            .place-search-results .result-item {
+                font-size: 10px;
+                padding: 5px 10px;
+            }
+            .place-search-results .result-item .sub {
+                font-size: 8px;
+            }
+        }
+
+        /* ===== PRINT ===== */
+        #printArea {
+            display: none;
+        }
+        @media print {
+            body>*:not(#printArea) {
+                display: none !important;
+            }
+            #printArea {
+                display: block !important;
+                padding: 20px;
+                position: relative;
+                font-family: 'Cairo', sans-serif;
+            }
+            body {
+                background: #fff;
+                color: #000;
+                overflow: auto;
+                height: auto;
+            }
+            #printArea h1 {
+                font-size: 18px;
+                margin-bottom: 4px;
+            }
+            #printArea p.meta {
+                font-size: 11px;
+                color: #333;
+                margin-top: 0;
+                margin-bottom: 12px;
+            }
+            #printArea table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 10px;
+            }
+            #printArea th,
+            #printArea td {
+                border: 1px solid #999;
+                padding: 4px 6px;
+                text-align: right;
+            }
+            #printArea th {
+                background: #eee;
+            }
+            #printArea tr:nth-child(even) {
+                background: #f7f7f7;
+            }
+            #printArea::after {
+                content: "@ahmedkhaled(darwish)";
+                position: fixed;
+                bottom: 15px;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 12px;
+                color: #aaa;
+                font-weight: 300;
+                letter-spacing: 1px;
+                background: rgba(255, 255, 255, 0.7);
+                padding: 4px 12px;
+                border-radius: 4px;
+                border-top: 1px solid #ddd;
+                width: auto;
+                text-align: center;
+                z-index: 999;
+            }
+        }
+
+        /* ===== MARKER WHITE BORDER ===== */
+        .leaflet-div-icon {
+            background: transparent !important;
+            border: none !important;
+        }
+        .leaflet-marker-icon .marker-dot {
+            border: 2.5px solid #ffffff !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2) !important;
+        }
+        .leaflet-marker-icon.user-marker .marker-dot {
+            border: 3px solid #ffffff !important;
+            box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.2), 0 2px 12px rgba(0, 0, 0, 0.25) !important;
+        }
+
+        /* ===== LIGHT POPUP THEME ===== */
+        .leaflet-popup-content-wrapper {
+            background: #ffffff !important;
+            color: #1a2633 !important;
+            border-radius: var(--radius-sm) !important;
+            border: 1px solid rgba(200, 210, 220, 0.5) !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+        }
+        .leaflet-popup-tip {
+            background: #ffffff !important;
+        }
+        .leaflet-popup-close-button {
+            color: #6a7a8a !important;
+        }
+        .leaflet-popup-close-button:hover {
+            color: #1a2633 !important;
+        }
+
+        /* ===== LIGHT ZOOM CONTROLS ===== */
+        .leaflet-control-zoom a {
+            background: #ffffff !important;
+            color: #1a2633 !important;
+            border-color: rgba(200, 210, 220, 0.5) !important;
+        }
+        .leaflet-control-zoom a:hover {
+            background: #f0f4f8 !important;
+        }
+        .leaflet-control-zoom a.leaflet-disabled {
+            color: #b0bcc8 !important;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== MAP ===== -->
+    <div id="mapContainer">
+        <div id="map"></div>
+    </div>
+
+    <!-- ===== FLOATING LEGEND ===== -->
+    <div id="floatingLegend">
+        <div class="legend-item">
+            <span class="legend-dot user"></span>
+            <span>موقعي</span>
+        </div>
+        <div class="legend-divider"></div>
+        <div class="legend-item">
+            <span class="legend-dot dest"></span>
+            <span>جهات التكليف</span>
+        </div>
+    </div>
+
+    <!-- ===== SIDEBAR (LEFT) ===== -->
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <div class="title-wrap">
+                <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z"/></svg>
+                <span>جهات التكليف</span>
+                <span class="count-badge" id="listCount">0</span>
+            </div>
+            <button class="close-btn" id="sidebarClose" title="إغلاق">
+                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+        </div>
+        <div id="listWrap">
+            <div id="list"></div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+    FILTER PANEL (RIGHT) — REDESIGNED
+    ============================================================ -->
+    <div id="filterPanel">
+        <!-- HEADER -->
+        <div class="panel-header">
+            <div class="title-wrap">
+                <svg viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+                <span>الإعدادات والفلاتر</span>
+            </div>
+            <button class="close-btn" id="filterClose" title="إغلاق">
+                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+        </div>
+
+        <!-- BODY -->
+        <div class="panel-body">
+
+            <!-- ===== LOCATION SECTION ===== -->
+            <div class="section">
+                <div class="section-title">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.3 7 13 7 13s7-7.7 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5S10.6 6.5 12 6.5s2.5 1.1 2.5 2.5S13.4 11.5 12 11.5z"/></svg>
+                    تحديد موقعي
+                </div>
+                <!-- Status -->
+                <div class="loc-status-row">
+                    <span class="dot" id="locDot"></span>
+                    <span id="locStatusText">جاري التحديد...</span>
+                    <span class="loc-coords" id="locCoords"></span>
+                </div>
+                <!-- Buttons -->
+                <div class="btn-row">
+                    <button id="locateBtn" class="success">
+                        <svg viewBox="0 0 24 24"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.3 7 13 7 13s7-7.7 7-13c0-3.9-3.1-7-7-7zm0 9.5c-1.4 0-2.5-1.1-2.5-2.5S10.6 6.5 12 6.5s2.5 1.1 2.5 2.5S13.4 11.5 12 11.5z"/></svg>
+                        GPS
+                    </button>
+                    <button id="locManualBtn" class="secondary">
+                        <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                        يدوي
+                    </button>
+                </div>
+                <!-- Place Search (manual location via map search) -->
+                <div class="place-search-wrap">
+                    <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    <input type="text" id="placeSearchInput" placeholder="ابحث عن مكان على الخريطة..." autocomplete="off" />
+                    <div class="place-search-results" id="placeSearchResults"></div>
+                </div>
+            </div>
+
+            <!-- ===== FILTERS SECTION (vertical stack) ===== -->
+            <div class="section">
+                <div class="section-title">
+                    <svg viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+                    الفلاتر
+                </div>
+
+                <div class="filter-stack">
+
+                    <!-- 1. تلوين حسب مسافات -->
+                    <div class="filter-item">
+                        <label>
+                            <input type="checkbox" id="colorByDistance" />
+                            تلوين حسب مسافات
+                        </label>
+                    </div>
+
+                    <!-- 2. Search Bar (full width) -->
+                    <div class="search-bar-wrap">
+                        <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                        <input type="text" id="search" placeholder="البحث عن جهة..." />
+                    </div>
+
+                    <!-- 3. Compact row: نطاقات + أقصى مسافة -->
+                    <div class="dist-row">
+                        <label class="dist-label">
+                            <input type="checkbox" id="showRings" />
+                            نطاقات
+                        </label>
+                        <div class="dist-input-wrap">
+                            <input type="number" id="maxDist" placeholder="0" min="0" step="1" />
+                            <span class="suffix">كم</span>
+                        </div>
+                    </div>
+
+                    <!-- 4. النوع (full width) -->
+                    <div class="filter-item full-width">
+                        <label style="width:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <span style="white-space:nowrap;font-weight:600;color:var(--text2);">النوع:</span>
+                            <select id="typeFilter" style="flex:1;min-width:80px;">
+                                <option value="all">الكل</option>
+                                <option value="مستشفى">مستشفى</option>
+                                <option value="معهد">معهد</option>
+                                <option value="مدرسة">مدرسة</option>
+                                <option value="أخرى">أخرى</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <!-- 5. المحافظة (full width) -->
+                    <div class="filter-item full-width">
+                        <label style="width:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <span style="white-space:nowrap;font-weight:600;color:var(--text2);">المحافظة:</span>
+                            <select id="govFilter" style="flex:1;min-width:80px;">
+                                <option value="all">الكل</option>
+                                <option value="القاهرة">القاهرة</option>
+                                <option value="الجيزة">الجيزة</option>
+                                <option value="القليوبية">القليوبية</option>
+                                <option value="الإسكندرية">الإسكندرية</option>
+                                <option value="الدقهلية">الدقهلية</option>
+                                <option value="الشرقية">الشرقية</option>
+                                <option value="الغربية">الغربية</option>
+                                <option value="كفر الشيخ">كفر الشيخ</option>
+                                <option value="المنوفية">المنوفية</option>
+                                <option value="دمياط">دمياط</option>
+                                <option value="المنيا">المنيا</option>
+                                <option value="أسيوط">أسيوط</option>
+                                <option value="سوهاج">سوهاج</option>
+                                <option value="قنا">قنا</option>
+                                <option value="أسوان">أسوان</option>
+                                <option value="الأقصر">الأقصر</option>
+                                <option value="بنى سويف">بنى سويف</option>
+                                <option value="الفيوم">الفيوم</option>
+                                <option value="البحر الأحمر">البحر الأحمر</option>
+                                <option value="الوادى الجديد">الوادى الجديد</option>
+                                <option value="شمال سيناء">شمال سيناء</option>
+                                <option value="جنوب سيناء">جنوب سيناء</option>
+                                <option value="مطروح">مطروح</option>
+                                <option value="بورسعيد">بورسعيد</option>
+                                <option value="السويس">السويس</option>
+                                <option value="الإسماعيلية">الإسماعيلية</option>
+                            </select>
+                        </label>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ===== EXPORT SECTION ===== -->
+            <div class="section" style="border-color:rgba(42,157,143,0.25);">
+                <div class="section-title" style="color:var(--teal);">
+                    <svg viewBox="0 0 24 24"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5h3l-5 5-5-5h3V8h4v3z"/></svg>
+                    تصدير
+                </div>
+                <button id="pdfBtn" class="export-btn">
+                    <svg viewBox="0 0 24 24"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5h3l-5 5-5-5h3V8h4v3z"/></svg>
+                    PDF
+                </button>
+            </div>
+
+            <!-- ===== NO CLEAR / RESET BUTTONS ===== -->
+
+        </div>
+    </div>
+
+    <!-- ===== OVERLAY ===== -->
+    <div id="overlay"></div>
+
+    <!-- ===== BOTTOM BUTTONS ===== -->
+    <button class="bottom-btn left" id="fabToggle" title="قائمة الرغبات">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z"/></svg>
+        <span class="badge" id="listBadge">0</span>
+    </button>
+    <button class="bottom-btn right" id="filterToggle" title="الإعدادات والفلاتر">
+        <svg viewBox="0 0 24 24"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>
+    </button>
+
+    <!-- ===== TOAST ===== -->
+    <div id="toast"></div>
+
+    <!-- ===== CREDIT — same row, centered between the two bottom buttons ===== -->
+    <div id="creditFooter">
+        <a href="https://www.facebook.com/Darrrwish" target="_blank" rel="noopener noreferrer" class="name-highlight">© Ahmed Khaled (Darwish)</a>
+    </div>
+
+    <!-- ===== PRINT AREA ===== -->
+    <div id="printArea">
+        <h1></h1>
+        <p class="meta"></p>
+        <table>
+            <thead><tr><th>#</th><th>الاسم</th><th>المسافة (كم)</th><th>النوع</th><th>المحافظة</th><th>دقة الموقع</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ============================================================
+            // 1. DATA — جميع جهات التكليف من ملف Excel (675 جهة)
+            // ============================================================
+            const rawDest = [
+                // ===== المحافظات الكبرى (القاهرة والجيزة) =====
+                ["المعهد الفنى للتمريض بمعهد القومى لامراض الكلى والمسالك البولية - الهيئة العامة للمستشفيات والمعاهد التعليمية بالقاهرة", 30.031573,
+                    31.227061, "القاهرة"
+                ],
+                ["أورام كفر الشيخ - امانة مراكز طبية متخصصة - كفر الشيخ", 31.110000, 30.940000, "كفر الشيخ"],
+                ["مستشفى صدر امبابة - امانة مركز طبية متخصصة الجيزة", 30.080137, 31.222905, "الجيزة"],
+                ["الهيئة العامة للرعاية الصحية بالسويس", 29.970000, 32.550000, "السويس"],
+                ["الهيئة العامة للرعاية الصحية بأسوان", 24.088900, 32.899800, "أسوان"],
+                ["الهيئة العامة للرعاية الصحية بجنوب سيناء", 29.500000, 33.800000, "جنوب سيناء"],
+                ["الهيئة العامة للرعاية الصحية بالاقصر", 25.687200, 32.639600, "الأقصر"],
+                ["مركز الاورام بمدينة نصر - الهيئة العامة للتأمين الصحى - القاهرة", 30.058809, 31.325498, "القاهرة"],
+                ["المجمع الطبي 6 أكتوبر - الهيئة العامة للتأمين الصحى - الجيزة", 29.981571, 30.940693, "الجيزة"],
+                ["م .مسنين حلوان - أمانة المراكز الطبية المتخصصة - القاهرة", 29.893479, 31.300526, "القاهرة"],
+                ["م رمد روض الفرج - أمانة المراكز الطبية المتخصصة - القاهرة", 30.083898, 31.237502, "القاهرة"],
+                ["م المنصورة التخصصي - أمانة المراكز الطبية المتخصصة - الدقهلية", 31.050000, 31.380000, "الدقهلية"],
+                ["م الباجور - أمانة المراكز الطبية المتخصصة - المنوفية", 30.470000, 30.930000, "المنوفية"],
+                ["م القصير - أمانة المراكز الطبية المتخصصة - البحر الاحمر", 26.100000, 34.280000, "البحر الأحمر"],
+                ["م رأس غالب - أمانة المراكز الطبية المتخصصة -البحر الاحمر", 27.000000, 34.000000, "البحر الأحمر"],
+                ["م رمد- أمانة المراكز الطبية المتخصصة - كفر الشيخ", 31.110000, 30.940000, "كفر الشيخ"],
+                ["م قلين - أمانة المراكز الطبية المتخصصة - كفر الشيخ", 31.050000, 30.860000, "كفر الشيخ"],
+                ["م بلطيم - أمانة المراكز الطبية المتخصصة - كفر الشيخ", 31.560000, 31.080000, "كفر الشيخ"],
+                ["م بئر العبد - أمانة المراكز الطبية المتخصصة - شمال سيناء", 31.000000, 33.500000, "شمال سيناء"],
+                ["م العلمين - أمانة المراكز الطبية المتخصصة - مطروح", 30.830000, 28.950000, "مطروح"],
+                ["م السلوم - أمانة المراكز الطبية المتخصصة - مطروح", 31.570000, 25.150000, "مطروح"],
+                ["م سيدى برانى - أمانة المراكز الطبية المتخصصة - مطروح", 31.610000, 26.000000, "مطروح"],
+                ["م سمالوط التخصصى - أمانة المراكز الطبية المتخصصة - المنيا", 28.310000, 30.710000, "المنيا"],
+                ["م ديرمواس التخصصى - أمانة المراكز الطبية المتخصصة - المنيا", 28.120000, 30.650000, "المنيا"],
+                ["م ملوى التخصصى - أمانة المراكز الطبية المتخصصة - المنيا", 27.730000, 30.840000, "المنيا"],
+                ["م ابوتيج - أمانة المراكز الطبية المتخصصة - اسيوط", 27.050000, 31.250000, "أسيوط"],
+                ["الهيئة العامة للرعاية الصحية بالاسماعيلية", 30.590000, 32.280000, "الإسماعيلية"],
+                ["م دمياط - الهيئة العامة للتأمين الصحى - دمياط", 31.420000, 31.810000, "دمياط"],
+                ["كلية التمريض جامعة - سوهاج", 26.550000, 31.700000, "سوهاج"],
+                ["مستشفى العاصمة الادارية - الهيئة العامة للتأمين الصحى - القاهرة", 29.994891, 31.684657, "القاهرة"],
+                ["مستشفى القاهرة الجديدة - امانة المراكز الطبية المتخصصة - القاهرة", 29.978991, 31.436751, "القاهرة"],
+                ["مستشفي امبابه - الامانة العامة للصحة النفسية - ذكور", 30.083848, 31.223767, "الجيزة"],
+                ["مستشفى الجراحات التخصصية الجامعي بسوهاج", 26.550000, 31.700000, "سوهاج"],
+                ["مستشفى شفا الاطفال الجامعى بسوهاج", 26.550000, 31.700000, "سوهاج"],
+                ["مركز اسنان مدينة نصر - امانة المراكز الطبية المتخصصة - القاهرة", 30.058809, 31.325498, "القاهرة"],
+                ["مستشقي كفر شكر بالقليوبية - امانة المراكز الطبية المتخصصة - القليوبية", 30.300000, 31.400000,
+                    "القليوبية"],
+                ["مستشفى قفط - قنا - امانة المراكز الطبية المتخصصة - قنا", 26.000000, 32.800000, "قنا"],
+                ["مستشفى الرمل بالاسكندرية", 31.200100, 29.918700, "الإسكندرية"],
+                ["ادارة صان الحجر بالشرقية", 30.830000, 31.920000, "الشرقية"],
+                ["مستشفى العبور الجديدة بالقليوبية", 30.180000, 31.460000, "القليوبية"],
+                ["مستشفى سيدي غازي بكفر الشيخ", 31.110000, 30.940000, "كفر الشيخ"],
+                ["مستشفى شبين الكوم للجراحات المتخصصة بالمنوفية", 30.470000, 30.930000, "المنوفية"],
+                ["مستشفى الأطفال التخصصي بالبحيرة", 31.100000, 30.400000, "البحيرة"],
+                ["ادارة غرب القناطر بالجيزة", 30.190666, 31.139924, "القليوبية"],
+                ["مستشفى شبرامنت المركزي بالجيزة", 29.945810, 31.188267, "الجيزة"],
+                ["مستشفى الشواشنة بالفيوم", 29.310000, 30.840000, "الفيوم"],
+                ["مستشفى حميات مغاغة بالمنيا", 28.650000, 30.820000, "المنيا"],
+                ["مستشفى حميات بنى مزار بالمنيا", 28.500000, 30.800000, "المنيا"],
+                ["مستشفى حميات سمالوط بالمنيا", 28.310000, 30.710000, "المنيا"],
+                ["مستشفى مصر الحرة بالمنيا", 28.100000, 30.750000, "المنيا"],
+                ["مستشفى العسيرات المركزى بسوهاج", 26.550000, 31.700000, "سوهاج"],
+                ["مستشفى سامول المركزى بالغربية", 30.880000, 31.030000, "الغربية"],
+                ["الهيئة العامة للرعاية الصحية بالمنيا", 28.100000, 30.750000, "المنيا"],
+                ["المعهد القومى للكبد والجهاز الهضمى والامراض المعدية بامبابة بالجيزة", 30.083961, 31.225714, "الجيزة"],
+                ["المراكز الطبية الثلاث بجامعه المنصورة بالدقهلية", 31.050000, 31.380000, "الدقهلية"],
+                ["مستشفى الطؤارى - جامعه سوهاج", 26.550000, 31.700000, "سوهاج"],
+                ["مستشفى الباطنة التخصصى جامعة اسوان", 24.088900, 32.899800, "أسوان"],
+                ["مستشفى الجراحات جامعة اسوان", 24.088900, 32.899800, "أسوان"],
+                ["مستشفى العظام جامعة اسوان", 24.088900, 32.899800, "أسوان"],
+                ["مستشفى الطوارى جامعة اسوان", 24.088900, 32.899800, "أسوان"],
+                ["المركز الاقليمي للمرأه بالاسكندرية - امانة المراكز الطبية المتخصصة - الاسكندرية", 31.200100, 29.918700,
+                    "الإسكندرية"
+                ],
+                ["الحجر الصحى بمطار العاصمة الدولى -القاهرة", 30.128067, 31.402820, "القاهرة"],
+                ["الحجر الصحى بميناء بورسعيد", 31.260000, 32.290000, "بورسعيد"],
+                ["الحجر الصحى بميناء بورتوفيق - السويس", 29.970000, 32.550000, "السويس"],
+                ["الحجر الصحى بميناء دمياط", 31.420000, 31.810000, "دمياط"],
+                ["الحجر الصحى بمعبر رفح البرى - شمال سيناء", 31.280000, 34.240000, "شمال سيناء"],
+                ["الحجر الصحى بميناء العريش البحرى -شمال سيناء", 31.130000, 33.800000, "شمال سيناء"],
+                ["الحجر الصحى بمنفذ قسطل البرى - اسوان", 22.860000, 33.000000, "أسوان"],
+                ["الحجر الصحى بمنفذ ارقين - اسوان", 22.430000, 33.000000, "أسوان"],
+                ["الحجر الصحى بمطار الغردقة الدولى - بالبحر الاحمر", 27.250000, 33.810000, "البحر الأحمر"],
+                ["الحجر الصحى بميناء الغردقة البحرى - بالبحر الاحمر", 27.250000, 33.810000, "البحر الأحمر"],
+                ["الحجر الصحى بميناء سفاجا البحرى - بالبحر الاحمر", 26.730000, 34.000000, "البحر الأحمر"],
+                ["الحجر الصحى بميناء غارب البحرى - بالبحر الاحمر", 28.080000, 33.000000, "البحر الأحمر"],
+                ["الحجر الصحى بميناء القصير البحرى - بالبحر الاحمر", 26.100000, 34.280000, "البحر الأحمر"],
+                ["المدرسة الثانوية الفنية للتمريض حميات- القاهرة", 30.044400, 31.235700, "القاهرة"],
+                ["المدرسة الثانوية الفنية للتمريض دار السلام- القاهرة", 29.997000, 31.235000, "القاهرة"],
+                ["المدرسة الثانوية الفنية للتمريض الصدر -القاهرة", 30.070000, 31.290000, "القاهرة"],
+                ["المدرسة الثانوية الفنية للتمريض شبرا -القاهرة", 30.073428, 31.253125, "القاهرة"],
+                ["المدرسة الثانوية الفنية للتمريض الخازندارة -القاهرة", 30.070000, 31.245000, "القاهرة"],
+                ["المدرسة الثانوية الفنية للتمريض الخليفة - القاهرة", 30.040000, 31.260000, "القاهرة"],
+                ["المدرسة الثانوية الفنية للتمريض بولاق - القاهرة", 30.030000, 31.240000, "القاهرة"],
+                ["المدرسة الثانوية الفنية للتمريض المنيرة - القاهرة", 30.027000, 31.228000, "القاهرة"],
+                ["المدرسة الثانوية الفنية للتمريض 15 - مايو بنات -القاهرة", 29.828925, 31.363523, "القاهرة"],
+                ["المدرسة الثانوية الفنية للتمريض 15مايو بنين + الشعبة القاهرة", 29.828925, 31.363523, "القاهرة"],
+                ["المدرسة الثانوية الفنية للتمريض بحلوان - القاهرة", 29.836563, 31.337058, "القاهرة"],
+                ["المدرسة الثانوية الفنية للتمريض روض الفرج بنات - القاهرة", 30.083898, 31.237502, "القاهرة"],
+                ["المدرسة الثانوية الفنية للتمريض روض الفرج بنين- القاهرة", 30.083898, 31.237502, "القاهرة"],
+                ["المدرسة الثانوية الفنية للتمريض منشية البكرى - القاهرة", 30.060000, 31.280000, "القاهرة"],
+                ["المدرسة الثانوية الفنية للتمريض امبابة - الجيزة", 30.080000, 31.210000, "الجيزة"],
+                ["المدرسة الثانوية الفنية للتمريض المنيب - الجيزة", 29.986200, 31.198800, "الجيزة"],
+                ["المدرسة الثانوية الفنية للتمريض بالمعتمدية - الجيزة", 30.050474, 31.170906, "الجيزة"],
+                ["المدرسة الثانوية الفنية للتمريض بالبدرشين - الجيزة", 29.848084, 31.275839, "الجيزة"],
+                ["المدرسة الثانوية الفنية للتمريض بولاق الدكرور - الجيزة", 30.019800, 31.194800, "الجيزة"],
+                ["المدرسة الثانوية الفنية للتمريض اوسيم - الجيزة", 30.097500, 31.136400, "الجيزة"],
+                ["المدرسة الثانوية الفنية للتمريض الصف- الجيزة", 29.573000, 31.276000, "الجيزة"],
+                ["المدرسة الثانوية الفنية للتمريض الوراق- الجيزة", 30.093973, 31.223955, "الجيزة"],
+                ["المدرسة الثانوية الفنية للتمريض اطفيح- الجيزة", 29.453000, 31.254000, "الجيزة"],
+                ["المدرسة الثانوية الفنية للتمريض ابوقير - الاسكندرية", 31.330000, 30.080000, "الإسكندرية"],
+                ["المدرسة الثانوية الفنية للتمريض راس التين - الاسكندرية", 31.200100, 29.918700, "الإسكندرية"],
+                ["المدرسة الثانوية الفنية للتمريض الجمهورية - الاسكندرية", 31.200100, 29.918700, "الإسكندرية"],
+                ["المدرسة الثانوية الفنية للتمريض دار اسماعيل - الاسكندرية", 31.200100, 29.918700, "الإسكندرية"],
+                ["المدرسة الثانوية الفنية للتمريض العامرية - الاسكندرية", 31.050000, 29.850000, "الإسكندرية"],
+                ["المدرسة الثانوية الفنية للتمريض برج العرب بنات - الاسكندرية", 30.900000, 29.600000, "الإسكندرية"],
+                ["المدرسة الثانوية الفنية للتمريض برج العرب بنين - الاسكندرية", 30.900000, 29.600000, "الإسكندرية"],
+                ["المدرسة الثانوية الفنية للتمريض المجزر - الاسكندرية", 31.200100, 29.918700, "الإسكندرية"],
+                ["المدرسة الثانوية الفنية للتمريض ابيس - الاسكندرية", 31.080000, 29.850000, "الإسكندرية"],
+                ["المدرسة الثانوية الفنية للتمريض رشيد بنين- البحيرة", 31.400000, 30.430000, "البحيرة"],
+                ["المدرسة الثانوية الفنية للتمريض كفر الدوار بنين- البحيرة", 31.130000, 30.300000, "البحيرة"],
+                ["المدرسة الثانوية الفنية للتمريض الدلنجات بنات- البحيرة", 31.080000, 30.500000, "البحيرة"],
+                ["المدرسة الثانوية الفنية للتمريض ابو حمص بنين- البحيرة", 31.080000, 30.250000, "البحيرة"],
+                ["المدرسة الثانوية الفنية للتمريض حوش عيسى بنين- البحيرة", 30.930000, 30.300000, "البحيرة"],
+                ["المدرسة الثانوية الفنية للتمريض ابو المطامير بنات- البحيرة", 30.810000, 30.180000, "البحيرة"],
+                ["المدرسة الثانوية الفنية للتمريض الدلنجات بنين- البحيرة", 31.080000, 30.500000, "البحيرة"],
+                ["المدرسة الثانوية الفنية للتمريض طنطا بنات - الغربية", 30.880000, 31.030000, "الغربية"],
+                ["المدرسة الثانوية الفنية للتمريض طنطا بنين - الغربية", 30.880000, 31.030000, "الغربية"],
+                ["المدرسة الثانوية الفنية للتمريض كفر الزيات بنات - الغربية", 30.820000, 30.820000, "الغربية"],
+                ["المدرسة الثانوية الفنية للتمريض كفر الزيات بنين - الغربية", 30.820000, 30.820000, "الغربية"],
+                ["المدرسة الثانوية الفنية للتمريض بسيون - الغربية", 30.860000, 30.820000, "الغربية"],
+                ["المدرسة الثانوية الفنية للتمريض زفتى - الغربية", 30.720000, 31.230000, "الغربية"],
+                ["المدرسة الثانوية الفنية للتمريض قطور - الغربية", 30.970000, 30.970000, "الغربية"],
+                ["المدرسة الثانوية الفنية للتمريض سمنود - الغربية", 30.900000, 31.100000, "الغربية"],
+                ["المدرسة الثانوية الفنية للتمريض كفر سعد بنات - دمياط", 31.360000, 31.700000, "دمياط"],
+                ["المدرسة الثانوية الفنية للتمريض كفر سعد بنين - دمياط", 31.360000, 31.700000, "دمياط"],
+                ["المدرسة الثانوية الفنية للتمريض جمصة - الدقهلية", 31.450000, 31.650000, "الدقهلية"],
+                ["المدرسة الثانوية الفنية للتمريض نبروة - الدقهلية", 31.150000, 31.250000, "الدقهلية"],
+                ["المدرسة الثانوية الفنية للتمريض المطرية - الدقهلية", 31.180000, 31.800000, "الدقهلية"],
+                ["المدرسة الثانوية الفنية للتمريض زهرة بنين -المنيا", 28.100000, 30.750000, "المنيا"],
+                ["المدرسة الثانوية الفنية للتمريض الاشمونين -المنيا", 27.780000, 30.800000, "المنيا"],
+                ["المدرسة الثانوية الفنية للتمريض ابا الوقف بنين -المنيا", 27.950000, 30.700000, "المنيا"],
+                ["المدرسة الثانوية الفنية للتمريض المستقبل بنين - الاسماعيلية", 30.590000, 32.280000, "الإسماعيلية"],
+                ["المدرسة الثانوية الفنية للتمريض التل المشتركه - الاسماعيلية", 30.600000, 32.250000, "الإسماعيلية"],
+                ["المدرسة الثانوية الفنية للتمريض باروط - بنى سويف", 29.500000, 31.080000, "بنى سويف"],
+                ["المدرسة الثانوية الفنية للتمريض - بنى سويف", 29.070000, 31.090000, "بنى سويف"],
+                ["المدرسة الثانوية الفنية للتمريض الفشن - بنى سويف", 29.500000, 30.830000, "بنى سويف"],
+                ["المدرسة الثانوية الفنية للتمريض اسيوط بنين- اسيوط", 27.180000, 31.180000, "أسيوط"],
+                ["المدرسة الثانوية الفنية للتمريض بنى حسين بنين - اسيوط", 27.100000, 31.100000, "أسيوط"],
+                ["المدرسة الثانوية الفنية للتمريض ديروط بنين- اسيوط", 27.200000, 31.150000, "أسيوط"],
+                ["المدرسة الثانوية الفنية للتمريض صدفا بنين - اسيوط", 27.000000, 31.050000, "أسيوط"],
+                ["المدرسة الثانوية الفنية للتمريض ابو تشت - قنا", 26.080000, 32.800000, "قنا"],
+                ["المدرسة الثانوية الفنية للتمريض فروشط - قنا", 26.080000, 32.750000, "قنا"],
+                ["المدرسة الثانوية الفنية للتمريض نجع حمادى - قنا", 26.050000, 32.300000, "قنا"],
+                ["المدرسة الثانوية الفنية للتمريض الوقف - قنا", 26.300000, 32.850000, "قنا"],
+                ["المدرسة الثانوية الفنية للتمريض دشنا - قنا", 26.120000, 32.470000, "قنا"],
+                ["المدرسة الثانوية الفنية للتمريض نقادة- قنا", 25.900000, 32.720000, "قنا"],
+                ["المدرسة الثانوية الفنية للتمريض راس غارب - البحر الاحمر", 28.080000, 33.000000, "البحر الأحمر"],
+                ["المدرسة الثانوية الفنية للتمريض القصير - البحر الاحمر", 26.100000, 34.280000, "البحر الأحمر"],
+                ["المدرسة الثانوية الفنية للتمريض مرسى علم - البحر الاحمر", 25.070000, 34.900000, "البحر الأحمر"],
+                ["المدرسة الثانوية الفنية للتمريض الشلاتين - البحر الاحمر", 23.130000, 35.600000, "البحر الأحمر"],
+                ["المدرسة الثانوية الفنية للتمريض باريس - الوادى الجديد", 25.500000, 30.550000, "الوادى الجديد"],
+                ["المدرسة الثانوية الفنية للتمريض بلاط - الوادى الجديد", 25.600000, 30.500000, "الوادى الجديد"],
+                ["المدرسة الثانوية الفنية للتمريض الداخلة - الوادى الجديد", 25.500000, 29.000000, "الوادى الجديد"],
+                ["المدرسة الثانوية الفنية للتمريض الفرافرة - الوادى الجديد", 27.060000, 27.970000, "الوادى الجديد"],
+
+                // ===== الجامعات والمستشفيات الجامعية =====
+                ["المعهد القومى للاورام بجامعة القاهرة - القاهرة", 30.024013, 31.230879, "القاهرة"],
+                ["القصر العينى التعليمى الجديد (الفرنساوى)- جامعة القاهرة - القاهرة", 30.030205, 31.231563, "القاهرة"],
+                ["المعهد الفنى للتمريض ( جامعة القاهرة)", 30.029043, 31.228330, "القاهرة"],
+                ["مستشفيات جامعة القاهرة - جامعة القاهرة", 30.031573, 31.227061, "القاهرة"],
+                ["مستشفى جامعة عين شمس التخصصى - القاهرة", 30.078493, 31.287642, "القاهرة"],
+                ["كلية التمريض بجامعة عين شمس - القاهرة", 30.078493, 31.287642, "القاهرة"],
+                ["مستشفيات جامعة عين شمس - القاهرة", 30.078493, 31.287642, "القاهرة"],
+                ["مستشفيات جامعة الاسكندرية الاسكندرية", 31.200100, 29.918700, "الإسكندرية"],
+                ["كلية التمريض - جامعة الاسكندرية الاسكندرية", 31.200100, 29.918700, "الإسكندرية"],
+                ["المعهد الفنى للتمريض - جامعة الاسكندرية - الاسكندرية", 31.200100, 29.918700, "الإسكندرية"],
+                ["مستشفيات جامعة الزقازيق الشرقية", 30.600000, 31.700000, "الشرقية"],
+                ["كلية التمريض جامعة الزقازيق الزقازيق", 30.600000, 31.700000, "الشرقية"],
+                ["المعهد الفنى للتمريض جامعة الزقازيق", 30.600000, 31.700000, "الشرقية"],
+                ["المعهد الفنى للتمريض بفاقوس جامعه الزقازيق الزقازيق", 30.700000, 31.800000, "الشرقية"],
+                ["مركز الطب النفسى وأمراض المخ والاعصاب جامعة طنطا - الغربية", 30.880000, 31.030000, "الغربية"],
+                ["مستشفيات جامعة طنطا - جامعة طنطا - الغربية", 30.880000, 31.030000, "الغربية"],
+                ["مستشفى جامعة طنطا التعليمى العالمى الجديد - الغربية", 30.880000, 31.030000, "الغربية"],
+                ["مستشفيات جامعة بنى سويف", 29.070000, 31.090000, "بنى سويف"],
+                ["مستشفي صحة المرأة جامعة اسيوط - اسيوط", 27.180000, 31.180000, "أسيوط"],
+                ["المستشفى الرئيسى جامعة اسيوط", 27.180000, 31.180000, "أسيوط"],
+                ["مستشفى الراجحى الجامعى للكبد جامعة اسيوط", 27.180000, 31.180000, "أسيوط"],
+                ["مستشفى القلب جامعة اسيوط - اسيوط", 27.180000, 31.180000, "أسيوط"],
+                ["مستشفى طب الاطفال الجامعى جامعة اسيوط", 27.180000, 31.180000, "أسيوط"],
+                ["مستشفى جراحة المسالك البولية والكلى جامعة اسيوط - اسيوط", 27.180000, 31.180000, "أسيوط"],
+                ["مستشفى المخ والاعصاب تابع لمستشفى العلوم العصبية - جامعة اسيوط", 27.180000, 31.180000, "أسيوط"],
+                ["مستشفى الاصابات بجامعة أسيوط", 27.180000, 31.180000, "أسيوط"],
+                ["مستشفيات جامعة المنوفية", 30.470000, 30.930000, "المنوفية"],
+                ["معهد الاورام - جامعة المنوفية", 30.470000, 30.930000, "المنوفية"],
+                ["مستشفى معهد الكبد القومى جامعة المنوفية المنوفية", 30.470000, 30.930000, "المنوفية"],
+                ["مسشتفيات جامعة المنيا - المنيا", 28.100000, 30.750000, "المنيا"],
+                ["كلية التمريض جامعة المنيا - المنيا", 28.100000, 30.750000, "المنيا"],
+                ["المعهد الفنى للتمريض بجامعة المنيا المنيا", 28.100000, 30.750000, "المنيا"],
+                ["مسشتفى الكلى والمسالك البولية مستشفيات جامعة المنيا - المنيا", 28.100000, 30.750000, "المنيا"],
+                ["مسشتفى القلب والصدر جامعة المنيا المنيا", 28.100000, 30.750000, "المنيا"],
+                ["مسشتفى النسا والاطفال جامعة المنيا - المنيا", 28.100000, 30.750000, "المنيا"],
+                ["المستشفى الجامعى بسوهاج", 26.550000, 31.700000, "سوهاج"],
+                ["مستشفى الاورام الجامعى بجامعة سوهاج سوهاج", 26.550000, 31.700000, "سوهاج"],
+                ["المعهد الفنى للتمريض جامعة سوهاج", 26.550000, 31.700000, "سوهاج"],
+                ["مستشفى طب الازهر الجامعى باسيوط - جامعة الازهر باسيوط", 27.180000, 31.180000, "أسيوط"],
+                ["مستشفى الحسين الجامعى جامعة الازهر -القاهرة", 30.060000, 31.290000, "القاهرة"],
+                ["مستشفى باب الشعرية جامعة الازهر - بالقاهرة", 30.060013, 31.260000, "القاهرة"],
+                ["مستشفى جامعة الازهر بدمياط - جامعة الازهر", 31.420000, 31.810000, "دمياط"],
+                ["عيادات كلية طب الاسنان جامعة المنصورة الدقهلية", 31.050000, 31.380000, "الدقهلية"],
+                ["مركز طب وجراحة الجهاز الهضمى جامعة المنصورة - الدقهلية", 31.050000, 31.380000, "الدقهلية"],
+                ["مستشفى الاطفال الجامعى جامعة المنصورة الدقهلية", 31.050000, 31.380000, "الدقهلية"],
+                ["مستشفى الباطنة التخصصى جامعة المنصورة الدقهلية", 31.050000, 31.380000, "الدقهلية"],
+                ["مركز الاورام المنصورة جامعة المنصورة الدقهلية", 31.050000, 31.380000, "الدقهلية"],
+                ["مسشتفى الطوارئ جامعة المنصورة - الدقهلية", 31.050000, 31.380000, "الدقهلية"],
+                ["مركز أمراض الكلى و المسالك البولية بجامعة المنصورة الدقهلية", 31.050000, 31.380000, "الدقهلية"],
+                ["مركز جراحة القلب والصدر الجديد الجامعة المنصورة", 31.050000, 31.380000, "الدقهلية"],
+                ["مستشفي الاطفال وجراحات الاطفال جامعة المنيا", 28.100000, 30.750000, "المنيا"],
+                ["كلية التمريض - جامعة قناة السويس بالاسماعيلية", 30.590000, 32.280000, "الإسماعيلية"],
+                ["مستشفيات جامعة بنها - القليوبية", 30.460000, 31.180000, "القليوبية"],
+                ["مستشفيات جامعة كفر الشيخ", 31.110000, 30.940000, "كفر الشيخ"],
+                ["كلية التمريض - جامعة كفر الشيخ", 31.110000, 30.940000, "كفر الشيخ"],
+                ["المعهد الفني للتمريض جامعة كفر الشيخ", 31.110000, 30.940000, "كفر الشيخ"],
+                ["مستشفيات قنا الجامعى - بقنا", 26.180000, 32.720000, "قنا"],
+                ["مستشفيات جامعة بورسعيد", 31.260000, 32.290000, "بورسعيد"],
+                ["المعهد الفنى للتمريض - جامعة قناة السويس - كلية التمريض بالاسماعيلية", 30.590000, 32.280000,
+                    "الإسماعيلية"],
+                ["مستشفي الثلاثي جامعه المنيا", 28.100000, 30.750000, "المنيا"],
+                ["مستشفي الطوارئ و الاستقبال جامعه المنيا", 28.100000, 30.750000, "المنيا"],
+                ["مستشفى المنصورة الجامعية (المستشفى الرئيسى) جامعة المنصورة الدقهلية", 31.050000, 31.380000,
+                    "الدقهلية"],
+                ["المعهد الفنى للتمريض جامعة قنا - قطاع التعليم - المعاهد - قنا", 26.180000, 32.720000, "قنا"],
+                ["المعهد الفنى للتمريض بجامعة عين شمس التخصصى", 30.078493, 31.287642, "القاهرة"],
+                ["المعهد الفنى للتمريض بجامعة المنصورة - قطاع التعليم - المعاهد -الدقهلية", 31.050000, 31.380000,
+                    "الدقهلية"],
+                ["المعهد الفنى للتمريض بجامعة عين شمس", 30.078493, 31.287642, "القاهرة"],
+                ["كلية التمريض جامعة دمنهور", 31.100000, 30.400000, "البحيرة"],
+                ["كلية التمريض جامعة مطروح", 31.350000, 27.230000, "مطروح"],
+                ["المعهد الفنى للتمريض - جامعه المنوفية", 30.470000, 30.930000, "المنوفية"],
+                ["مستشفى برج العرب - جامعة الاسكندرية", 30.900000, 29.600000, "الإسكندرية"],
+
+                // ===== هيئة المستشفيات والمعاهد التعليمية =====
+                ["مستشفى الساحل بروض الفرج - هيئة المستشفيات والمعاهد التعليمية - القاهرة", 30.083898, 31.237502,
+                    "القاهرة"],
+                ["مستشفى احمد ماهر التعليمي - هيئة المستشفيات والمعاهد التعليمية - القاهرة", 30.039863, 31.251192,
+                    "القاهرة"],
+                ["مستشفى بنها التعليمى - هيئة المستشفيات والمعاهد التعليمية - القليوبية", 30.460000, 31.180000,
+                    "القليوبية"],
+                ["مستشفى شبين الكوم التعليمى - هيئة المستشفيات والمعاهد التعليمية - المنوفية", 30.470000, 30.930000,
+                    "المنوفية"],
+                ["مستشفى الجلاء التعليمى - هيئة المستشفيات والمعاهد التعليمية - القاهرة", 30.054727, 31.238174,
+                    "القاهرة"],
+                ["مستشفى دمنهور التعليمى - هيئة المستشفيات والمعاهد التعليمية - البحيرة", 31.100000, 30.400000,
+                    "البحيرة"],
+                ["مستشفى سوهاج التعليمى - هيئة المستشفيات والمعاهد التعليمية - سوهاج", 26.550000, 31.700000, "سوهاج"],
+                ["معهد أمراض السكر والغدد الصماء - الهيئة العامة للمستشفيات والمعاهد التعليمية - القاهرة", 30.025694,
+                    31.231692, "القاهرة"
+                ],
+                ["مستشفى المطرية التعليمى - هيئة المستشفيات والمعاهد التعليمية - القاهرة", 30.117562, 31.303073,
+                    "القاهرة"],
+                ["معهد القلب القومى بإمبابة - هيئة المستشفيات والمعاهد التعليمية - الجيزة", 30.068714, 31.186408,
+                    "الجيزة"],
+                ["مستشفى الجمهورية بالقاهرة - هيئة المستشفيات والمعاهد التعليمية - القاهرة", 30.038944, 31.248424,
+                    "القاهرة"],
+                ["المعهد الفنى للتمريض بمعهد القلب القومى - الهيئة العامة للمستشفيات والمعاهد التعليمية - الجيزة",
+                    30.083961, 31.225714, "الجيزة"
+                ],
+                ["معهد الرمد التذكارى - الهيئة العامة للمستشفيات والمعاهد التعليمية", 30.015252, 31.215464, "الجيزة"],
+                ["معهد الامراض المتوطنة والكبد - هيئة المستشفيات والمعاهد التعليمية - القاهرة", 30.025076, 31.231592,
+                    "القاهرة"
+                ],
+                ["معهد التغذية - فم الخليج القاهرة - هيئة المستشفيات والمعاهد التعليمية", 30.025000, 31.231000,
+                    "القاهرة"],
+                ["المعهد الفنى للتمريض بمستشفى الساحل التعليمى - الهيئة العامة للمستشفيات والمعاهد التعليمية بالقاهرة",
+                    30.083898, 31.237502, "القاهرة"
+                ],
+                ["معهد الكلى والمسالك البولية بالمطرية - هيئة المستشفيات والمعاهد التعليمية - القاهرة", 30.116323,
+                    31.303537, "القاهرة"
+                ],
+                ["معهد كبد المحلة - هيئة المستشفيات والمعاهد التعليمية - الغربية", 30.880000, 31.030000, "الغربية"],
+                ["مستشفى أورام الاسماعيلية - هيئة المستشفيات والمعاهد التعليمية", 30.590000, 32.280000,
+                    "الإسماعيلية"],
+                ["مستشفى الاحرار - الهيئة العامة للمستشفيات والمعاهد التعليمية", 30.060000, 31.250000, "القاهرة"],
+                ["المعهد الفنى للتمريض بمستشفى المطرية التعليمى - الهيئة العامة للمستشفيات والمعاهد التعليمية بالقاهرة",
+                    30.117562, 31.303073, "القاهرة"
+                ],
+                ["المعهد الفنى للتمريض بمعهد الرمد التذكارى - الهيئة العامة للمستشفيات والمعاهد التعليمية بالقاهرة",
+                    30.015252, 31.215464, "القاهرة"
+                ],
+                ["المعهد الفنى للتمريض بمعهد دمنهور الطبى - الهيئة العامة للمستشفيات والمعاهد التعليمية بالبحيرة",
+                    31.100000, 30.400000, "البحيرة"
+                ],
+                ["المعهد الفنى للتمريض بمستشفى جامة الازهر بدمياط", 31.420000, 31.810000, "دمياط"],
+                ["المعهد الفنى للتمريض بمعهد الجهاز الحركى والعصبى - الهيئة العامة للمستشفيات والمعاهد التعليمية بالجيزة",
+                    30.081806, 31.224929, "الجيزة"
+                ],
+                ["المعهد الفنى للتمريض بمعهد احمد ماهر التعليمى - الهيئة العامة للمستشفيات والمعاهد التعليمية بالقاهرة",
+                    30.039863, 31.251192, "القاهرة"
+                ],
+                ["المعهد الفنى للتمريض بمستشفى الجلاء التعليمى - الهيئة العامة للمستشفيات والمعاهد التعليمية بالقاهرة",
+                    30.054727, 31.238174, "القاهرة"
+                ],
+                ["المعهد الفنى للتمريض بمعهد الكبد والجهاز الهضمى - الهيئة العامة للمستشفيات والمعاهد التعليمية بالقاهرة",
+                    30.025076, 31.231592, "القاهرة"
+                ],
+                ["المعهد الفنى للتمريض بمعهد السكر والغدد الصماء - الهيئة العامة للمستشفيات والمعاهد التعليمية بالقاهرة",
+                    30.025694, 31.231692, "القاهرة"
+                ],
+
+                // ===== أمانة المراكز الطبية المتخصصة =====
+                ["مستشفى جراحات اليوم الواحد بالبساتين - أمانة المراكز الطبية المتخصصة -القاهرة", 29.987655, 31.277227,
+                    "القاهرة"
+                ],
+                ["مستشفى جراحات اليوم الواحد راس البر - أمانة المراكز الطبية المتخصصة - دمياط", 31.510000, 31.830000,
+                    "دمياط"
+                ],
+                ["مستشفى المنصورة الدولى المنصورة - أمانة المراكز الطبية المتخصصة - الدقهلية", 31.050000, 31.380000,
+                    "الدقهلية"
+                ],
+                ["مستشفى جراحات اليوم الواحد بالمرج - أمانة المراكز الطبية المتخصصة - القاهرة", 30.141998, 31.337230,
+                    "القاهرة"
+                ],
+                ["مستشفى جراحات اليوم الواحد بسمالوط - أمانة المراكز الطبية المتخصصة - المنيا", 28.310000, 30.710000,
+                    "المنيا"
+                ],
+                ["مستشفى جراحات اليوم الواحد مدينة نصر القاهرة - أمانة المراكز الطبية المتخصصة", 30.048903, 31.317942,
+                    "القاهرة"
+                ],
+                ["مستشفى الهرم التخصصى بالجيزة - أمانة المراكز الطبية المتخصصة - الجيزة", 29.991288, 31.151240,
+                    "الجيزة"],
+                ["مستشفى الاطفال التخصصى - أمانة المراكز الطبية المتخصصة - القليوبية", 30.190000, 31.210000,
+                    "القليوبية"],
+                ["مستشفى القباري - أمانة المراكز الطبية المتخصصة -الاسكندرية", 31.180000, 29.890000, "الإسكندرية"],
+                ["مستشفى شرق المدينة - أمانة المراكز الطبية المتخصصة - الاسكندرية", 31.220000, 29.950000,
+                    "الإسكندرية"],
+                ["مستشفى القاهرة الفاطمية - أمانة المراكز الطبية المتخصصة - القاهرة", 30.046732, 31.270722, "القاهرة"],
+                ["مستشفى دار الشفاء - أمانة المراكز الطبية المتخصصة- القاهرة", 30.071466, 31.278659, "القاهرة"],
+                ["مستشفى الهلال بالقاهرة - أمانة المراكز الطبية المتخصصة - القاهرة", 30.058965, 31.243781, "القاهرة"],
+                ["مسشتفى الزيتون التخصصى - أمانة المراكز الطبية المتخصصة - القاهرة", 30.108185, 31.293984, "القاهرة"],
+                ["مستشفى جراحات اليوم الواحد بالزاواية - أمانة المراكز الطبية المتخصصة - القاهرة", 30.087554, 31.273130,
+                    "القاهرة"
+                ],
+                ["مستشفى معهد ناصر للبحوث والعلاج بالقاهرة - أمانة المراكز الطبية المتخصصة", 30.096401, 31.239650,
+                    "القاهرة"
+                ],
+                ["مستشفى جراحات اليوم الواحد بأشمون - أمانة المراكز الطبية المتخصصة - المنوفية", 30.300000, 30.970000,
+                    "المنوفية"
+                ],
+                ["مركز القلب بالمحلة الكبرى - أمانة المراكز الطبية المتخصصة - الغربية", 30.880000, 31.030000,
+                    "الغربية"],
+                ["مركز أورام دمياط - أمانة المراكز الطبية المتخصصة - دمياط", 31.420000, 31.810000, "دمياط"],
+                ["مركز أورام دمنهور - أمانة المراكز الطبية المتخصصة -البحيرة", 31.100000, 30.400000, "البحيرة"],
+                ["مركز أورام مدينة السلام - أمانة المراكز الطبية المتخصصة - القاهرة", 30.166827, 31.421067, "القاهرة"],
+                ["مستشفى الشيخ زايد التخصصى - أمانة المراكز الطبية المتخصصة - الجيزة", 30.032457, 31.003020, "الجيزة"],
+                ["مستشفى السلام التخصصى بالقاهرة- أمانة المراكز الطبية المتخصصة - القاهرة", 30.166827, 31.421067,
+                    "القاهرة"
+                ],
+                ["مستشفى البنك الاهلى للرعاية المتكاملة بالقاهرة - أمانة المراكز الطبية المتخصصة - المعادى القاهرة",
+                    29.982159, 31.346089, "القاهرة"
+                ],
+                ["مستشفي الكبد بكفر الشيخ - أمانة المراكز الطبية المتخصصة - كفر الشيخ", 31.110000, 30.940000,
+                    "كفر الشيخ"],
+                ["مستشفى جراحات اليوم الواحد بمرسى علم - أمانة المراكز الطبية المتخصصة - البحر الاحمر", 25.070000,
+                    34.900000, "البحر الأحمر"
+                ],
+                ["مركز كبد داماص بالدقهلية - أمانة المراكز الطبية المتخصصة - الدقهلية", 31.050000, 31.380000,
+                    "الدقهلية"],
+                ["مركز اورام قنا - أمانة المراكز الطبية المتخصصة - قنا", 26.180000, 32.720000, "قنا"],
+                ["مستشفي العجمي - أمانة المراكز الطبية المتخصصة - الاسكندرية", 31.130000, 29.870000, "الإسكندرية"],
+                ["مستشفي دمياط التخصصي - أمانة المراكز الطبية المتخصصة - دمياط", 31.420000, 31.810000, "دمياط"],
+                ["مستشفي رمد المحلة - أمانة المراكز الطبية المتخصصة - الغربية", 30.880000, 31.030000, "الغربية"],
+                ["مستشفي محلة مرحوم - أمانة المراكز الطبية المتخصصة - الغربية", 30.880000, 31.030000, "الغربية"],
+                ["مركز اورام المنيا - أمانة المراكز الطبية المتخصصة - المنيا", 28.100000, 30.750000, "المنيا"],
+                ["مركز اورام سوهاج - أمانة المراكز الطبية المتخصصة - سوهاج", 26.550000, 31.700000, "سوهاج"],
+                ["مركز اورام طنطا - أمانة المراكز الطبية المتخصصة- الغربية", 30.880000, 31.030000, "الغربية"],
+                ["مركز اورام ميت غمر - أمانة المراكز الطبية المتخصصة - الدقهلية", 30.720000, 31.250000, "الدقهلية"],
+                ["مستشفى العجوزة - أمانة المراكز الطبية المتخصصة - الجيزة", 30.054330, 31.215421, "الجيزة"],
+                ["مستشفى قلب مطروح - أمانة المراكز الطبية المتخصصة - مطروح", 31.350000, 27.230000, "مطروح"],
+                ["مركز الكبد بدمياط - أمانة المراكز الطبية المتخصصة - دمياط", 31.420000, 31.810000, "دمياط"],
+                ["مستشفي كوم حمادة - أمانة المراكز الطبية المتخصصة - البحيرة", 30.760000, 30.660000, "البحيرة"],
+                ["مستشفي وادي النطرون - أمانة المراكز الطبية المتخصصة - البحيرة", 30.400000, 30.200000, "البحيرة"],
+                ["مستشفي الخارجة بالوادي الجديد - أمانة المراكز الطبية المتخصصة - الوادى الجديد", 25.500000, 30.550000,
+                    "الوادى الجديد"
+                ],
+                ["مستشفي قها المركزي بالقليوبية - أمانة المراكز الطبية المتخصصة - القليوبية", 30.280000, 31.370000,
+                    "القليوبية"
+                ],
+                ["مستشفي الخانكة بالقليوبية - أمانة المراكز الطبية المتخصصة - القليوبية", 30.224405, 31.372746,
+                    "القليوبية"
+                ],
+                ["مستشفي ناصر العام بالقليوبية - أمانة المراكز الطبية المتخصصة - القليوبية", 30.460000, 31.180000,
+                    "القليوبية"
+                ],
+                ["مستشفي فاقوس بالشرقية - أمانة المراكز الطبية المتخصصة - الشرقية", 30.700000, 31.800000, "الشرقية"],
+                ["مستشفي كبد ههيا بالشرقية - أمانة المراكز الطبية المتخصصة - الشرقية", 30.640000, 31.680000,
+                    "الشرقية"],
+                ["مستشفي أهناسيا ببني سويف - أمانة المراكز الطبية المتخصصة - بنى سويف", 29.380000, 31.050000,
+                    "بنى سويف"],
+                ["مستشفى الشيخ زايد أل نهيان امانة المراكز الطبيه - القاهرة", 30.032457, 31.003020, "القاهرة"],
+                ["مستشفى 15 مايو امانة المراكز الطبيه - القاهرة", 29.828925, 31.363523, "القاهرة"],
+                ["مستشفى قليوب التخصصي امانة المراكز الطبيه - القليوبية", 30.190000, 31.210000, "القليوبية"],
+                ["مستشفى كبد سوهاج امانة المراكز الطبيه - سوهاج", 26.550000, 31.700000, "سوهاج"],
+                ["مستشفى بنى عبيد التخصصى -امانة المراكز الطبية المتخصصة - الدقهلية", 30.870000, 31.370000,
+                    "الدقهلية"],
+                ["مستشفى بنى سويف التخصصى -امانة المراكز الطبية المتخصصة - بنى سويف", 29.070000, 31.090000, "بنى سويف"],
+                ["مستشفى جراحات اليوم الواحد بسمالوط - أمانة المراكز الطبية المتخصصة", 28.310000, 30.710000,
+                    "المنيا"],
+
+                // ===== التأمين الصحي =====
+                ["ت.صحي فرع المنوفية - المنوفية", 30.470000, 30.930000, "المنوفية"],
+                ["مستشفى 6اكتوبر الدقى - تأمين صحى فرع الجيزة", 30.037377, 31.214396, "الجيزة"],
+                ["مستشفى مدينة نصر - تأمين صحى - القاهرة", 30.059075, 31.324888, "القاهرة"],
+                ["مستشفى صيدناوى - تأمين صحى - القاهرة", 30.056763, 31.246651, "القاهرة"],
+                ["مستشفى المقطم - تأمين صحى - القاهرة", 30.020959, 31.243858, "القاهرة"],
+                ["مستشفى النصر بحلوان - تأمين صحى - القاهرة", 29.840059, 31.323186, "القاهرة"],
+                ["مستشفى اطفال مصر - تأمين صحى - القاهرة", 30.027994, 31.236451, "القاهرة"],
+                ["مستشفى شبرا - تأمين صحى - القاهرة", 30.073428, 31.253125, "القاهرة"],
+                ["مستشفى جمال عبدالناصر - تأمين صحى - الأسكندرية", 31.200100, 29.918700, "الإسكندرية"],
+                ["مستشفى كرموز - تأمين صحى - الأسكندرية", 31.180000, 29.890000, "الإسكندرية"],
+                ["مستشفى سبورتج - تأمين صحى - الأسكندرية", 31.220000, 29.950000, "الإسكندرية"],
+                ["مستشفى ابو قير التخصصى - تأمين صحى - الأسكندرية", 31.330000, 30.080000, "الإسكندرية"],
+                ["مستشفى المنصورة - تأمين صحى - الدقهلية", 31.050000, 31.380000, "الدقهلية"],
+                ["المجمع الطبى بطنطا - تأمين صحى - الغربية", 30.880000, 31.030000, "الغربية"],
+                ["مستشفى مبرة طنطا - تأمين صحى - الغربية", 30.880000, 31.030000, "الغربية"],
+                ["مستشفى العبور كفر الشيخ - تأمين صحى", 31.110000, 30.940000, "كفر الشيخ"],
+                ["مستشفى فوة - تأمين صحى - بالدقهلية", 31.200000, 31.700000, "الدقهلية"],
+                ["مستشفى العاشر من رمضان - تأمين صحى - الشرقية", 30.300000, 31.730000, "الشرقية"],
+                ["مستشفى النيل بشبرا الخيمة - تأمين صحى", 30.124000, 31.240000, "القليوبية"],
+                ["مستشفى بنها - تأمين صحى - القليوبية", 30.460000, 31.180000, "القليوبية"],
+                ["مستشفى بهتيم - تأمين صحى - القليوبية", 30.180000, 31.210000, "القليوبية"],
+                ["مستشفى الفيوم - تأمين صحى - الفيوم", 29.310000, 30.840000, "الفيوم"],
+                ["مستشفى بنى سويف - تأمين صحى - بنى سويف", 29.070000, 31.090000, "بنى سويف"],
+                ["مستشفى المنيا - تأمين صحى - المنيا", 28.100000, 30.750000, "المنيا"],
+                ["مستشفى اسيوط - تأمين صحى - اسيوط", 27.180000, 31.180000, "أسيوط"],
+                ["مستشفى سوهاج - تأمين صحى - سوهاج", 26.550000, 31.700000, "سوهاج"],
+                ["مستشفي المحلة - تأمين صحي - الغربية", 30.880000, 31.030000, "الغربية"],
+                ["مستشفي ميت غمر - تأمين صحي - الدقهلية", 30.720000, 31.250000, "الدقهلية"],
+
+                // ===== الصحة النفسية =====
+                ["مستشفى بورسعيد - الامانة العامة للصحة النفسية وعلاج الادمان - بور سعيد", 31.260000, 32.290000,
+                    "بورسعيد"],
+                ["مستشفى الخانكة - الامانة العامة للصحة النفسية وعلاج الادمان - القليوبية", 30.224405, 31.372746,
+                    "القليوبية"
+                ],
+                ["مستشفى العباسية - الامانة العامة للصحة النفسية وعلاج الادمان - القاهرة", 30.070927, 31.294562,
+                    "القاهرة"
+                ],
+                ["مستشفى المعمورة - الامانة العامة للصحة النفسية وعلاج الادمان - الاسكندرية", 31.240000, 29.960000,
+                    "الإسكندرية"
+                ],
+                ["مستشفى حلوان - الامانة العامة للصحة النفسية وعلاج الادمان - القاهرة", 29.836563, 31.337058,
+                    "القاهرة"],
+                ["مستشفى أسوان - الامانة العامة للصحة النفسية وعلاج الادمان - بأسوان", 24.088900, 32.899800, "أسوان"],
+                ["مستشفى ببنى سويف - الامانة العامة للصحة النفسية وعلاج الادمان - ببنى سويف", 29.070000, 31.090000,
+                    "بنى سويف"
+                ],
+                ["مستشفى بسوهاج - الامانة العامة للصحة النفسية وعلاج الادمان - بسوهاج", 26.550000, 31.700000, "سوهاج"],
+                ["مستشفى الدميرة - الامانة العامة للصحة النفسية وعلاج الادمان - بالدقهلية", 31.050000, 31.380000,
+                    "الدقهلية"
+                ],
+                ["مستشفى شبين الكوم - الامانة العامة للصحة النفسية وعلاج الادمان - بالمنوفية", 30.470000, 30.930000,
+                    "المنوفية"
+                ],
+
+                // ===== مدارس التمريض الفنية (الثانوية) =====
+                ["المدرسة الثانوية الفنية للتمريض مشتول بنات - الشرقية", 30.650000, 31.750000, "الشرقية"],
+                ["المدرسة الثانوية الفنية للتمريض منيا القمح بنات - الشرقية", 30.560000, 31.760000, "الشرقية"],
+                ["المدرسة الثانوية الفنية للتمريض الحسينية بنين - الشرقية", 30.870000, 31.900000, "الشرقية"],
+                ["المدرسة الثانوية الفنية للتمريض الحسينية بنات - الشرقية", 30.870000, 31.900000, "الشرقية"],
+                ["المدرسة الثانوية الفنية للتمريض ابو حماد بنات - الشرقية", 30.550000, 31.680000, "الشرقية"],
+                ["المدرسة الثانوية الفنية للتمريض تلراك بنين- الشرقية", 30.700000, 31.850000, "الشرقية"],
+                ["المدرسة الثانوية الفنية للتمريض عباسية بنين - الامانة العامة للصحة النفسية وعلاج الادمان بالقاهرة",
+                    30.070927, 31.294562, "القاهرة"
+                ],
+                ["المدرسة الثانوية الفنية للتمريض حلوان بنين - الامانة العامة للصحة النفسية وعلاج الادمان بلقاهرة",
+                    29.836563, 31.337058, "القاهرة"
+                ],
+                ["المدرسة الثانوية الفنية للتمريض العزازى بنين- الامانة العامة للصحة النفسية وعلاج الادمان بالشرقية",
+                    30.650000, 31.750000, "الشرقية"
+                ],
+                ["المدرسة الثانوية الفنية للتمريض المنيا بنين- الامانة العامة للصحة النفسية وعلاج الادمان بالمنيا",
+                    28.100000, 30.750000, "المنيا"
+                ],
+                ["المدرسة الثانوية الفنية للتمريض سوهاج بنين- الامانة العامة للصحة النفسية وعلاج الادمان بسوهاج",
+                    26.550000, 31.700000, "سوهاج"
+                ],
+                ["مدرسة /شعبة فنيات تمريض السلام - امانة المراكز الطبية المتخصصة بالقاهرة", 30.166827, 31.421067,
+                    "القاهرة"
+                ],
+                ["مدرسة فنيات تمريض فرع دار الشفا - امانة المراكز الطبية المتخصصة بالقاهرة", 30.071466, 31.278659,
+                    "القاهرة"
+                ],
+                ["مدرسة فنيات تمريض فرع العجوزة - امانة المراكز الطبية المتخصصة بالجيزة", 30.054330, 31.215421,
+                    "الجيزة"],
+                ["مدرسة فنيات تمريض فرع الهرم - امانة المراكز الطبية المتخصصة بالجيزة", 29.991288, 31.151240,
+                    "الجيزة"],
+                ["مدرسة فنيات تمريض فرع الخانكة بنات - امانة المراكز الطبية المتخصصة بالقليوبية", 30.224405, 31.372746,
+                    "القليوبية"
+                ],
+                ["مدرسة فنيات تمريض فرع اورام سوهاج - امانة المراكز الطبية المتخصصة بسوهاج", 26.550000, 31.700000,
+                    "سوهاج"
+                ],
+                ["مدرسة فنيات تمريض فرع قبارى - امانة المراكز الطبية المتخصصة بالاسكندرية", 31.180000, 29.890000,
+                    "الإسكندرية"
+                ],
+                ["مدرسة فنيات تمريض فرع العجمى - امانة المراكز الطبية المتخصصة بالاسكندرية", 31.130000, 29.870000,
+                    "الإسكندرية"
+                ],
+                ["مدرسة فنيات تمريض فرع بنين بلطيم - امانة المراكز الطبية المتخصصة بكفر الشيخ", 31.560000, 31.080000,
+                    "كفر الشيخ"
+                ],
+                ["مدرسة فنيات تمريض فرع بنات بلطيم - امانة المراكز الطبية المتخصصة بكفر الشيخ", 31.560000, 31.080000,
+                    "كفر الشيخ"
+                ],
+                ["مدرسة فنيات تمريض فرع بالعلمين - امانة المراكز الطبية المتخصصة بمطروح", 30.830000, 28.950000,
+                    "مطروح"],
+                ["مدرسة فنيات تمريض فرع الخارجة- امانة المراكز الطبية المتخصصة الوادى الجديد", 25.500000, 30.550000,
+                    "الوادى الجديد"
+                ],
+                ["مدرسة فنيات تمريض فرع قفط التخصصى- امانة المراكز الطبية المتخصصة بقنا", 26.000000, 32.800000, "قنا"],
+                ["مدرسة فنيات تمريض فرع ابو تيج بنات- امانة المراكز الطبية المتخصصة باسيوط", 27.050000, 31.250000,
+                    "أسيوط"],
+                ["مدرسة فنيات تمريض فرع ابو تيج التخصصى - امانة المراكز الطبية المتخصصة باسيوط", 27.050000, 31.250000,
+                    "أسيوط"
+                ],
+                ["مدرسة تمريض المقطم - الهيئة العامة للتامين الصحى بالقاهرة", 30.020959, 31.243858, "القاهرة"],
+                ["مدرسة تمريض النصر حلوان- الهيئة العامة للتامين الصحى بالقاهرة", 29.840059, 31.323186, "القاهرة"],
+                ["مدرسة تمريض شبرا الجديدة- الهيئة العامة للتامين الصحى بالقليوبية", 30.124000, 31.240000,
+                    "القليوبية"],
+                ["مدرسة تمريض مجمع التوفيق - الهيئة العامة للتامين الصحى بالقاهرة", 30.045000, 31.245000, "القاهرة"],
+                ["مدرسة تمريض صيدناوى - الهيئة العامة للتامين الصحى بالقاهرة", 30.056763, 31.246651, "القاهرة"],
+                ["مدرسة تمريض اطفال مصر - الهيئة العامة للتامين الصحى بالقاهرة", 30.027994, 31.236451, "القاهرة"],
+                ["مدرسة تمريض المجمع الطبى - الهيئة العامة للتامين الصحى بالقاهرة", 30.060000, 31.245000, "القاهرة"],
+                ["مدرسة تمريض مدينة نصر - الهيئة العامة للتامين صحى بالقاهرة", 30.059075, 31.324888, "القاهرة"],
+                ["مدرسة تمريض بدر - الهيئة العامة للتامين الصحى بالقاهرة", 30.139167, 31.731749, "القاهرة"],
+                ["مدرسة تمريض تفهنا الاشراف بميت غمر - الهيئة العامة للتامين الصحى بالدقهليه", 30.720000, 31.250000,
+                    "الدقهلية"
+                ],
+                ["مدرسة تمريض سندوب المنصورة - الهيئة العامة للتامين الصحى بالدقهلية", 31.050000, 31.380000,
+                    "الدقهلية"],
+                ["مدرسة تمريض دمياط - الهيئة العامة للتامين الصحى بدمياط", 31.420000, 31.810000, "دمياط"],
+                ["مدرسة تمريض اسيوط - الهيئة العامة للتامين الصحى باسيوط", 27.180000, 31.180000, "أسيوط"],
+                ["مدرسة تمريض سوهاج - الهيئة العامة للتامين الصحى بسوهاج", 26.550000, 31.700000, "سوهاج"],
+                ["مدرسة تمريض قنا - الهيئة العامة للتامين الصحى بقنا", 26.180000, 32.720000, "قنا"],
+                ["مدرسة تمريض كرموز - الهيئة العامة للتامين الصحى بالاسكندرية", 31.180000, 29.890000, "الإسكندرية"],
+                ["مدرسة تمريض الابراهيمية - الهيئة العامة للتامين الصحى بالاسكندرية", 31.200100, 29.918700,
+                    "الإسكندرية"
+                ],
+
+                // ===== الحجر الصحي =====
+                ["حجر صحى مطار القاهرة", 30.128067, 31.402820, "القاهرة"],
+                ["حجر صحى بور سعيد", 31.260000, 32.290000, "بورسعيد"],
+                ["حجر صحى مطار اسوان", 24.088900, 32.899800, "أسوان"],
+                ["حجر صحى معبر السلوم البرى - مطروح", 31.570000, 25.150000, "مطروح"],
+                ["حجر صحي مطار سفنكس - القاهرة", 29.980000, 30.893000, "القاهرة"],
+                ["حجر صحي مطار مرسي علم - البحر الاحمر", 25.070000, 34.900000, "البحر الأحمر"],
+
+                // ===== معاهد أخرى =====
+                ["معهد بحوث أمراض العيون - وزارة البحث العلمى - الجيزة", 30.014913, 31.216484, "الجيزة"],
+                ["المركز الطبى بالهيئة القومية لسكك حديد مصر - القاهرة", 30.058731, 31.241980, "القاهرة"],
+                ["معهد تيودربلهارس - الجيزة", 30.093973, 31.223955, "الجيزة"],
+                ["الهيئة العامة للرعاية الصحية ببورسعيد", 31.260000, 32.290000, "بورسعيد"],
+
+                // ===== إدارات صحية (الجيزة) =====
+                ["ادارة الوراق الجيزة", 30.091000, 31.223000, "الجيزة"],
+                ["ادارة الهرم الجيزة", 29.991288, 31.151240, "الجيزة"],
+                ["ادارة جنوب الجيزة الجيزة", 29.987000, 31.211800, "الجيزة"],
+                ["ادارة شمال الجيزة الجيزة", 30.025000, 31.205000, "الجيزة"],
+                ["ادارة بولاق الدكرور الجيزة", 30.019800, 31.194800, "الجيزة"],
+                ["ادارة العجوزة الجيزة", 30.054330, 31.215421, "الجيزة"],
+                ["ادارة العمرانية الجيزة", 29.994400, 31.185000, "الجيزة"],
+                ["ادارة الصف الجيزة", 29.573000, 31.276000, "الجيزة"],
+                ["ادارة أطفيح الجيزة", 29.453000, 31.254000, "الجيزة"],
+                ["ادارة كرداسة الجيزة", 30.056300, 31.119400, "الجيزة"],
+                ["ادارة شمال العياط الجيزة", 29.610000, 31.160000, "الجيزة"],
+                ["ادارة جنوب العياط الجيزة", 29.500000, 31.190000, "الجيزة"],
+                ["ادارة منشاة القناطر شرق الجيزة", 30.185000, 31.135000, "الجيزة"],
+                ["ادارة البدرشين الجيزة", 29.848084, 31.275839, "الجيزة"],
+                ["ادارة الحوامدية الجيزة", 29.889000, 31.266000, "الجيزة"],
+                ["ادارة اوسيم الجيزة", 30.097500, 31.136400, "الجيزة"],
+                ["ادارة ابو النمرس الجيزة", 29.945810, 31.188267, "الجيزة"],
+
+                // ===== مستشفيات الجيزة =====
+                ["م. أم المصريين الجيزة", 30.013000, 31.200000, "الجيزة"],
+                ["م. بولاق الدكرور الجيزة", 30.019800, 31.194800, "الجيزة"],
+                ["م. إمبابة العام الجيزة", 30.077000, 31.213000, "الجيزة"],
+     
