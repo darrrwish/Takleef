@@ -887,6 +887,90 @@
             transform: translateX(-50%) translateY(0);
         }
 
+        /* ===== PROMO CARD ===== */
+        #promoCard {
+            position: fixed;
+            bottom: 85px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #ffffff;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(42, 157, 143, 0.3);
+            border-radius: var(--radius);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            padding: 16px 24px 18px;
+            z-index: 9998;
+            max-width: 420px;
+            width: 92%;
+            text-align: center;
+            font-family: var(--font);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            direction: rtl;
+            background: linear-gradient(145deg, #ffffff 0%, #f0f8ff 100%);
+            border-top: 4px solid var(--teal);
+        }
+        #promoCard.show {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) translateY(0);
+        }
+        #promoCard .promo-close {
+            position: absolute;
+            top: 8px;
+            left: 12px;
+            background: transparent;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: var(--text3);
+            padding: 4px;
+            line-height: 1;
+        }
+        #promoCard .promo-close:hover {
+            color: var(--text);
+        }
+        #promoCard .promo-icon {
+            font-size: 32px;
+            margin-bottom: 4px;
+        }
+        #promoCard h3 {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text);
+            margin: 0 0 4px 0;
+        }
+        #promoCard p {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text2);
+            margin: 0 0 12px 0;
+            line-height: 1.5;
+        }
+        #promoCard .promo-btn {
+            display: inline-block;
+            background: var(--teal);
+            color: #fff;
+            padding: 8px 24px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 14px;
+            transition: background 0.2s, transform 0.1s;
+            border: none;
+            cursor: pointer;
+            font-family: var(--font);
+        }
+        #promoCard .promo-btn:hover {
+            background: var(--teal-light);
+            transform: scale(1.02);
+        }
+        #promoCard .promo-btn:active {
+            transform: scale(0.95);
+        }
+
         /* ===== CREDIT — same row, centered between the two bottom buttons ===== */
         #creditFooter {
             position: fixed;
@@ -918,6 +1002,7 @@
             pointer-events: auto;
             transition: color 0.2s;
             text-decoration: none;
+            cursor: pointer;
         }
         #creditFooter .name-highlight:hover {
             color: var(--teal-light) !important;
@@ -1232,6 +1317,25 @@
                 padding: 8px 20px;
                 min-height: 38px;
             }
+            /* promo card */
+            #promoCard {
+                bottom: 75px;
+                padding: 14px 16px 16px;
+                max-width: 94%;
+            }
+            #promoCard h3 {
+                font-size: 14px;
+            }
+            #promoCard p {
+                font-size: 12px;
+            }
+            #promoCard .promo-btn {
+                font-size: 12px;
+                padding: 6px 18px;
+            }
+            #promoCard .promo-icon {
+                font-size: 26px;
+            }
         }
 
         @media (max-width: 400px) {
@@ -1411,6 +1515,21 @@
             #disclaimerModal .modal-footer button svg {
                 width: 16px;
                 height: 16px;
+            }
+            /* promo card */
+            #promoCard {
+                bottom: 65px;
+                padding: 12px 14px 14px;
+            }
+            #promoCard h3 {
+                font-size: 13px;
+            }
+            #promoCard p {
+                font-size: 11px;
+            }
+            #promoCard .promo-btn {
+                font-size: 11px;
+                padding: 5px 14px;
             }
         }
 
@@ -1733,9 +1852,20 @@
     <!-- ===== TOAST ===== -->
     <div id="toast"></div>
 
+    <!-- ===== PROMO CARD ===== -->
+    <div id="promoCard">
+        <button class="promo-close" id="promoClose" title="إغلاق">✕</button>
+        <div class="promo-content">
+          
+            <h3>تطبيق جديد هيسهلها عليك!</h3>
+            <p>قريباً عند ظهور نتيجة التكليف... تابعنا للمزيد!!</p>
+            <a href="https://www.facebook.com/Darrrwish" target="_blank" rel="noopener noreferrer" class="promo-btn" id="promoFollowBtn">متابعة</a>
+        </div>
+    </div>
+
     <!-- ===== CREDIT — same row, centered between the two bottom buttons ===== -->
     <div id="creditFooter">
-        <a href="https://www.facebook.com/Darrrwish" target="_blank" rel="noopener noreferrer" class="name-highlight">© Ahmed Khaled (Darwish)</a>
+        <a href="#" class="name-highlight">© Ahmed Khaled (Darwish)</a>
     </div>
 
     <!-- ===== DISCLAIMER MODAL ===== -->
@@ -2309,7 +2439,7 @@
                 ["مدرسة /شعبة فنيات تمريض السلام - امانة المراكز الطبية المتخصصة بالقاهرة", 30.166827, 31.421067,
                     "القاهرة"
                 ],
-                ["مدرسة فنيات تمريض فرع دار الشفا - امانة المراكز الطبية المتخصصة بالقاهرة", 30.071466, 31.278659,
+                ["مدرسة فنيات تمريض فرع دار الشفاء - امانة المراكز الطبية المتخصصة بالقاهرة", 30.071466, 31.278659,
                     "القاهرة"
                 ],
                 ["مدرسة فنيات تمريض فرع العجوزة - امانة المراكز الطبية المتخصصة بالجيزة", 30.054330, 31.215421,
@@ -3304,7 +3434,48 @@
             });
 
             // ============================================================
-            // 21. INIT
+            // 21. PROMO CARD LOGIC
+            // ============================================================
+            const promoCard = document.getElementById('promoCard');
+            const promoClose = document.getElementById('promoClose');
+            const promoFollowBtn = document.getElementById('promoFollowBtn');
+            const creditName = document.querySelector('#creditFooter .name-highlight');
+            let promoTimeout = null;
+
+            function showPromoCard() {
+                clearTimeout(promoTimeout);
+                promoCard.classList.add('show');
+                promoTimeout = setTimeout(() => {
+                    promoCard.classList.remove('show');
+                }, 15000);
+            }
+
+            function hidePromoCard() {
+                clearTimeout(promoTimeout);
+                promoCard.classList.remove('show');
+            }
+
+            if (creditName) {
+                creditName.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showPromoCard();
+                });
+            }
+
+            if (promoClose) {
+                promoClose.addEventListener('click', hidePromoCard);
+            }
+
+            if (promoFollowBtn) {
+                promoFollowBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.open('https://www.facebook.com/Darrrwish', '_blank');
+                    hidePromoCard();
+                });
+            }
+
+            // ============================================================
+            // 22. INIT
             // ============================================================
             function init() {
                 const hasUserLoc = loadUserLocation();
@@ -3343,6 +3514,9 @@
 
                 // show disclaimer after a short delay
                 setTimeout(openDisclaimer, 800);
+
+                // Show promo card after 500ms
+                setTimeout(showPromoCard, 500);
             }
 
             // Start
